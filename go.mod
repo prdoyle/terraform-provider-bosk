@@ -1,4 +1,4 @@
-module terraform-provider-hashicups
+module terraform-provider-bosk
 
 go 1.19
 
