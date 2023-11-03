@@ -20,10 +20,10 @@ type Client struct {
 }
 
 func NewClient(baseURL, username, password string) *Client {
-	return &Client {
-		BaseURL: baseURL,
-		Username: username,
-		Password: password,
+	return &Client{
+		BaseURL:    baseURL,
+		Username:   username,
+		Password:   password,
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -42,11 +42,9 @@ func (c *Client) doRequest(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 
-	if res.StatusCode / 100 != 2 {
+	if res.StatusCode/100 != 2 {
 		return nil, fmt.Errorf("status: %d, body: %s", res.StatusCode, body)
 	}
 
 	return body, err
 }
-
-
