@@ -23,4 +23,4 @@ provider "scaffolding" {
 
 ### Optional
 
-- `endpoint` (String) Example provider attribute
+- `endpoint` (String) ObjectNode provider attribute
