@@ -18,7 +18,7 @@ func TestAccObjectNodeDataSource(t *testing.T) {
 			{
 				Config: testAccObjectNodeDataSourceConfig,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.scaffolding_example.test", "id", "example-id"),
+					resource.TestCheckResourceAttr("data.object_node.test", "id", "example-id"),
 				),
 			},
 		},
@@ -26,7 +26,7 @@ func TestAccObjectNodeDataSource(t *testing.T) {
 }
 
 const testAccObjectNodeDataSourceConfig = `
-data "scaffolding_example" "test" {
+data "object_node" "test" {
   configurable_attribute = "example"
 }
 `

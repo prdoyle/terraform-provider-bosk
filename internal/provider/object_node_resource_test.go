@@ -39,7 +39,7 @@ func TestAccObjectNodeResource(t *testing.T) {
 			{
 				Config: testAccObjectNodeResourceConfig("two"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("scaffolding_example.test", "configurable_attribute", "two"),
+					resource.TestCheckResourceAttr("object_node.test", "configurable_attribute", "two"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -49,7 +49,7 @@ func TestAccObjectNodeResource(t *testing.T) {
 
 func testAccObjectNodeResourceConfig(configurableAttribute string) string {
 	return fmt.Sprintf(`
-resource "scaffolding_example" "test" {
+resource "object_node" "test" {
   configurable_attribute = %[1]q
 }
 `, configurableAttribute)
