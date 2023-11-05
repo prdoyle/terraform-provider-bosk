@@ -1,4 +1,4 @@
-module github.com/hashicorp/terraform-provider-scaffolding-framework
+module github.com/prdoyle/terraform-provider-bosk
 
 go 1.19
 
