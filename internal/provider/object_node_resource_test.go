@@ -19,14 +19,14 @@ func TestAccObjectNodeResource(t *testing.T) {
 			{
 				Config: testAccObjectNodeResourceConfig("one"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("scaffolding_example.test", "configurable_attribute", "one"),
-					resource.TestCheckResourceAttr("scaffolding_example.test", "defaulted", "example value when not configured"),
-					resource.TestCheckResourceAttr("scaffolding_example.test", "id", "example-id"),
+					resource.TestCheckResourceAttr("object_node.test", "configurable_attribute", "one"),
+					resource.TestCheckResourceAttr("object_node.test", "defaulted", "example value when not configured"),
+					resource.TestCheckResourceAttr("object_node.test", "id", "example-id"),
 				),
 			},
 			// ImportState testing
 			{
-				ResourceName:      "scaffolding_example.test",
+				ResourceName:      "object_node.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// This is not normally necessary, but is here because this
