@@ -19,48 +19,48 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &ObjectNodeResource{}
-var _ resource.ResourceWithImportState = &ObjectNodeResource{}
+var _ resource.Resource = &NodeResource{}
+var _ resource.ResourceWithImportState = &NodeResource{}
 
-func NewObjectNodeResource() resource.Resource {
-	return &ObjectNodeResource{}
+func NewNodeResource() resource.Resource {
+	return &NodeResource{}
 }
 
-// ObjectNodeResource defines the resource implementation.
-type ObjectNodeResource struct {
+// NodeResource defines the resource implementation.
+type NodeResource struct {
 	client *http.Client
 }
 
-// ObjectNodeResourceModel describes the resource data model.
-type ObjectNodeResourceModel struct {
+// NodeResourceModel describes the resource data model.
+type NodeResourceModel struct {
 	ConfigurableAttribute types.String `tfsdk:"configurable_attribute"`
 	Defaulted             types.String `tfsdk:"defaulted"`
 	Id                    types.String `tfsdk:"id"`
 }
 
-func (r *ObjectNodeResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_object_node"
+func (r *NodeResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_node"
 }
 
-func (r *ObjectNodeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *NodeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "ObjectNode resource",
+		MarkdownDescription: "Node resource",
 
 		Attributes: map[string]schema.Attribute{
 			"configurable_attribute": schema.StringAttribute{
-				MarkdownDescription: "ObjectNode configurable attribute",
+				MarkdownDescription: "Node configurable attribute",
 				Optional:            true,
 			},
 			"defaulted": schema.StringAttribute{
-				MarkdownDescription: "ObjectNode configurable attribute with default value",
+				MarkdownDescription: "Node configurable attribute with default value",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("example value when not configured"),
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "ObjectNode identifier",
+				MarkdownDescription: "Node identifier",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -69,7 +69,7 @@ func (r *ObjectNodeResource) Schema(ctx context.Context, req resource.SchemaRequ
 	}
 }
 
-func (r *ObjectNodeResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *NodeResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -89,8 +89,8 @@ func (r *ObjectNodeResource) Configure(ctx context.Context, req resource.Configu
 	r.client = client
 }
 
-func (r *ObjectNodeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data ObjectNodeResourceModel
+func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data NodeResourceModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -119,8 +119,8 @@ func (r *ObjectNodeResource) Create(ctx context.Context, req resource.CreateRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ObjectNodeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data ObjectNodeResourceModel
+func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data NodeResourceModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -141,8 +141,8 @@ func (r *ObjectNodeResource) Read(ctx context.Context, req resource.ReadRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ObjectNodeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data ObjectNodeResourceModel
+func (r *NodeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var data NodeResourceModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -163,8 +163,8 @@ func (r *ObjectNodeResource) Update(ctx context.Context, req resource.UpdateRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ObjectNodeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data ObjectNodeResourceModel
+func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data NodeResourceModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -182,6 +182,6 @@ func (r *ObjectNodeResource) Delete(ctx context.Context, req resource.DeleteRequ
 	// }
 }
 
-func (r *ObjectNodeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *NodeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

@@ -15,46 +15,46 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &ObjectNodeDataSource{}
+var _ datasource.DataSource = &NodeDataSource{}
 
-func NewObjectNodeDataSource() datasource.DataSource {
-	return &ObjectNodeDataSource{}
+func NewNodeDataSource() datasource.DataSource {
+	return &NodeDataSource{}
 }
 
-// ObjectNodeDataSource defines the data source implementation.
-type ObjectNodeDataSource struct {
+// NodeDataSource defines the data source implementation.
+type NodeDataSource struct {
 	client *http.Client
 }
 
-// ObjectNodeDataSourceModel describes the data source data model.
-type ObjectNodeDataSourceModel struct {
+// NodeDataSourceModel describes the data source data model.
+type NodeDataSourceModel struct {
 	ConfigurableAttribute types.String `tfsdk:"configurable_attribute"`
 	Id                    types.String `tfsdk:"id"`
 }
 
-func (d *ObjectNodeDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *NodeDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_node"
 }
 
-func (d *ObjectNodeDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *NodeDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
 			"configurable_attribute": schema.StringAttribute{
-				MarkdownDescription: "ObjectNode configurable attribute",
+				MarkdownDescription: "Node configurable attribute",
 				Optional:            true,
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "ObjectNode identifier",
+				MarkdownDescription: "Node identifier",
 				Computed:            true,
 			},
 		},
 	}
 }
 
-func (d *ObjectNodeDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *NodeDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -74,8 +74,8 @@ func (d *ObjectNodeDataSource) Configure(ctx context.Context, req datasource.Con
 	d.client = client
 }
 
-func (d *ObjectNodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ObjectNodeDataSourceModel
+func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data NodeDataSourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)

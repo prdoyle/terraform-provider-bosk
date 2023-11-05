@@ -39,7 +39,7 @@ func (p *BoskProvider) Schema(ctx context.Context, req provider.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "ObjectNode provider attribute",
+				MarkdownDescription: "Node provider attribute",
 				Optional:            true,
 			},
 		},
@@ -58,7 +58,7 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	// Configuration values are now available.
 	// if data.Endpoint.IsNull() { /* ... */ }
 
-	// ObjectNode client configuration for data sources and resources
+	// Node client configuration for data sources and resources
 	client := http.DefaultClient
 	resp.DataSourceData = client
 	resp.ResourceData = client
@@ -66,13 +66,13 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 
 func (p *BoskProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewObjectNodeResource,
+		NewNodeResource,
 	}
 }
 
 func (p *BoskProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewObjectNodeDataSource,
+		NewNodeDataSource,
 	}
 }
 

@@ -10,23 +10,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccObjectNodeResource(t *testing.T) {
+func TestAccNodeResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccObjectNodeResourceConfig("one"),
+				Config: testAccNodeResourceConfig("one"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("object_node.test", "configurable_attribute", "one"),
-					resource.TestCheckResourceAttr("object_node.test", "defaulted", "example value when not configured"),
-					resource.TestCheckResourceAttr("object_node.test", "id", "example-id"),
+					resource.TestCheckResourceAttr("bosk_node.test", "configurable_attribute", "one"),
+					resource.TestCheckResourceAttr("bosk_node.test", "defaulted", "example value when not configured"),
+					resource.TestCheckResourceAttr("bosk_node.test", "id", "example-id"),
 				),
 			},
 			// ImportState testing
 			{
-				ResourceName:      "object_node.test",
+				ResourceName:      "bosk_node.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// This is not normally necessary, but is here because this
@@ -37,9 +37,9 @@ func TestAccObjectNodeResource(t *testing.T) {
 			},
 			// Update and Read testing
 			{
-				Config: testAccObjectNodeResourceConfig("two"),
+				Config: testAccNodeResourceConfig("two"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("object_node.test", "configurable_attribute", "two"),
+					resource.TestCheckResourceAttr("bosk_node.test", "configurable_attribute", "two"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -47,9 +47,9 @@ func TestAccObjectNodeResource(t *testing.T) {
 	})
 }
 
-func testAccObjectNodeResourceConfig(configurableAttribute string) string {
+func testAccNodeResourceConfig(configurableAttribute string) string {
 	return fmt.Sprintf(`
-resource "object_node" "test" {
+resource "bosk_node" "test" {
   configurable_attribute = %[1]q
 }
 `, configurableAttribute)
