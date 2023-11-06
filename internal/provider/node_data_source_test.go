@@ -16,7 +16,12 @@ func TestAccNodeDataSource(t *testing.T) {
 	// Thank you https://github.com/hashicorp/terraform-provider-http/blob/main/internal/provider/data_source_http_test.go
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, err := w.Write([]byte("[{\"world\":{\"id\":\"world\"}}]"))
+		// Note that we deliberately add extra whitespace here to test normalization of JSON strings
+		_, err := w.Write([]byte(`
+			[
+				{"world":{"id":"world"}}
+			]
+		`))
 		if err != nil {
 			t.Errorf("error writing body: %s", err)
 		}

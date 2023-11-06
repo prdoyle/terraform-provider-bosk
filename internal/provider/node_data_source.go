@@ -141,7 +141,7 @@ func getAsString(client *http.Client, url string, diag *diag.Diagnostics) string
 }
 
 func normalizeJSON(input []byte) ([]byte, error) {
-	var parsed map[string]interface{}
+	var parsed interface{}
 	err := json.Unmarshal(input, &parsed)
 	if err != nil {
 		return input, err
@@ -150,5 +150,6 @@ func normalizeJSON(input []byte) ([]byte, error) {
 	if err != nil {
 		return input, err
 	}
+	fmt.Println("Returning result", result)
 	return result, nil
 }
