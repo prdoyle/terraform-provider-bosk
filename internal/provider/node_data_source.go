@@ -5,15 +5,11 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -27,7 +23,7 @@ func NewNodeDataSource() datasource.DataSource {
 
 // NodeDataSource defines the data source implementation.
 type NodeDataSource struct {
-	client *http.Client
+	client *BoskClient
 }
 
 // NodeDataSourceModel describes the data source data model.
@@ -75,7 +71,7 @@ func (d *NodeDataSource) Configure(ctx context.Context, req datasource.Configure
 		return
 	}
 
-	d.client = client
+	d.client = NewBoskClient(client)
 }
 
 func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -87,7 +83,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 
-	result_json := getAsString(d.client, data.URL.ValueString(), &resp.Diagnostics)
+	result_json := d.client.GetJSONAsString(data.URL.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -100,55 +96,4 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-// This is, in effect, bosk client code. Can be reused for the GET operation in the resource
-// Portions taken from: https://github.com/hashicorp/terraform-provider-http/blob/main/internal/provider/data_source_http.go
-func getAsString(client *http.Client, url string, diag *diag.Diagnostics) string {
-	httpResp, err := client.Get(url)
-	if err != nil {
-		diag.AddError("Client Error", fmt.Sprintf("Unable to read node: %s", err))
-		return "ERROR"
-	}
-
-	defer httpResp.Body.Close()
-
-	bytes, err := io.ReadAll(httpResp.Body)
-	if err != nil {
-		diag.AddError(
-			"Error reading response body",
-			fmt.Sprintf("Error reading response body: %s", err),
-		)
-		return "ERROR"
-	}
-	if !utf8.Valid(bytes) {
-		diag.AddWarning(
-			"Response body is not recognized as UTF-8",
-			"Terraform may not properly handle the response_body if the contents are binary.",
-		)
-	}
-
-	normalized, err := normalizeJSON(bytes)
-	if err != nil {
-		diag.AddWarning(
-			"Error normalizing JSON response",
-			fmt.Sprintf("Error reading response body: %s", err),
-		)
-		return string(bytes)
-	}
-
-	return string(normalized)
-}
-
-func normalizeJSON(input []byte) ([]byte, error) {
-	var parsed interface{}
-	err := json.Unmarshal(input, &parsed)
-	if err != nil {
-		return input, err
-	}
-	result, err := json.Marshal(parsed)
-	if err != nil {
-		return input, err
-	}
-	return result, nil
 }
