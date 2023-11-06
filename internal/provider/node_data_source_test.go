@@ -18,7 +18,8 @@ func TestAccNodeDataSource(t *testing.T) {
 			{
 				Config: testAccNodeDataSourceConfig,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.bosk_node.test", "id", "example-id"),
+					resource.TestCheckResourceAttr("data.bosk_node.test", "url", "http://localhost:1740/bosk/targets"),
+					resource.TestCheckResourceAttr("data.bosk_node.test", "value_json", "[{\"world\":{\"id\":\"world\"}}]"),
 				),
 			},
 		},
@@ -27,6 +28,7 @@ func TestAccNodeDataSource(t *testing.T) {
 
 const testAccNodeDataSourceConfig = `
 data "bosk_node" "test" {
-  configurable_attribute = "example"
+  url = "http://localhost:1740/bosk/targets"
+  value_json = "[]"
 }
 `

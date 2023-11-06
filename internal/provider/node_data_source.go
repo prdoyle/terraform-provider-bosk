@@ -5,11 +5,15 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -28,8 +32,8 @@ type NodeDataSource struct {
 
 // NodeDataSourceModel describes the data source data model.
 type NodeDataSourceModel struct {
-	ConfigurableAttribute types.String `tfsdk:"configurable_attribute"`
-	Id                    types.String `tfsdk:"id"`
+	URL        types.String `tfsdk:"url"`
+	Value_json types.String `tfsdk:"value_json"`
 }
 
 func (d *NodeDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -42,13 +46,13 @@ func (d *NodeDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
-			"configurable_attribute": schema.StringAttribute{
-				MarkdownDescription: "Node configurable attribute",
-				Optional:            true,
+			"url": schema.StringAttribute{ // TODO: Separate base URL versus path?
+				MarkdownDescription: "The HTTP address of the node",
+				Required:            true,
 			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "Node identifier",
-				Computed:            true,
+			"value_json": schema.StringAttribute{
+				MarkdownDescription: "The JSON-encoded contents of the node",
+				Required:            true,
 			},
 		},
 	}
@@ -79,27 +83,72 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := d.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
-	//     return
-	// }
+	result_json := getAsString(d.client, data.URL.ValueString(), &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	// For the purposes of this example code, hardcoding a response value to
-	// save into the Terraform state.
-	data.Id = types.StringValue("example-id")
+	data.Value_json = types.StringValue(result_json)
 
-	// Write logs using the tflog package
-	// Documentation: https://terraform.io/plugin/log
-	tflog.Trace(ctx, "read a data source")
+	tflog.Trace(ctx, "read bosk node", map[string]interface{}{
+		"url": data.URL.ValueString(),
+	})
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// This is, in effect, bosk client code. Can be reused for the GET operation in the resource
+// Portions taken from: https://github.com/hashicorp/terraform-provider-http/blob/main/internal/provider/data_source_http.go
+func getAsString(client *http.Client, url string, diag *diag.Diagnostics) string {
+	httpResp, err := client.Get(url)
+	if err != nil {
+		diag.AddError("Client Error", fmt.Sprintf("Unable to read node: %s", err))
+		return "ERROR"
+	}
+
+	defer httpResp.Body.Close()
+
+	bytes, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		diag.AddError(
+			"Error reading response body",
+			fmt.Sprintf("Error reading response body: %s", err),
+		)
+		return "ERROR"
+	}
+	if !utf8.Valid(bytes) {
+		diag.AddWarning(
+			"Response body is not recognized as UTF-8",
+			"Terraform may not properly handle the response_body if the contents are binary.",
+		)
+	}
+
+	normalized, err := normalizeJSON(bytes)
+	if err != nil {
+		diag.AddWarning(
+			"Error normalizing JSON response",
+			fmt.Sprintf("Error reading response body: %s", err),
+		)
+		return string(bytes)
+	}
+
+	return string(normalized)
+}
+
+func normalizeJSON(input []byte) ([]byte, error) {
+	var parsed map[string]interface{}
+	err := json.Unmarshal(input, &parsed)
+	if err != nil {
+		return input, err
+	}
+	result, err := json.Marshal(parsed)
+	if err != nil {
+		return input, err
+	}
+	return result, nil
 }
