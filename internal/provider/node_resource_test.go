@@ -6,32 +6,51 @@ package provider
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccNodeResource(t *testing.T) {
+	// Note that we deliberately add extra whitespace here to test normalization of JSON strings
+	// entityState := []byte(`[
+	// 	{"world":{"id":"world"}}
+	// ]`)
+	var entityState string = ""
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		// Note that we deliberately add extra whitespace here to test normalization of JSON strings
-		_, err := w.Write([]byte(`
-			[
-				{"world":{"id":"world"}}
-			]
-		`))
-		if err != nil {
-			t.Errorf("error writing body: %s", err)
+		switch r.Method {
+		case "GET":
+			if entityState == "" {
+				t.Log("GET returning 404")
+				w.WriteHeader(404)
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				_, err := w.Write([]byte(entityState))
+				if err != nil {
+					t.Errorf("error writing body: %s", err)
+				}
+				t.Logf("GET returning %s", entityState)
+			}
+		case "PUT":
+			buf := new(strings.Builder)
+			_, err := io.Copy(buf, r.Body)
+			entityState = buf.String()
+			t.Logf("PUT body %s", entityState)
+			if err != nil {
+				t.Errorf("error reading body: %s", err)
+			}
+		case "DELETE":
+			entityState = ""
+		default:
+			t.Errorf("unexpected method: %s", r.Method)
 		}
 	}))
 	defer testServer.Close()
-
-	fmt.Println("Testing testAccNodeResourceConfig: ", testAccNodeResourceConfig(testServer.URL, []map[string]map[string]string{
-		{"world": {"id": "world"}},
-	}))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -49,18 +68,23 @@ func TestAccNodeResource(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				ResourceName:      "bosk_node.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:                         "bosk_node.test",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "url",
+				ImportStateId:                        testServer.URL,
 			},
 			// // Update and Read testing
-			// {
-			// 	Config: testAccNodeResourceConfig("two"),
-			// 	Check: resource.ComposeAggregateTestCheckFunc(
-			// 		resource.TestCheckResourceAttr("bosk_node.test", "configurable_attribute", "two"),
-			// 	),
-			// },
-			// // Delete testing automatically occurs in TestCase
+			{
+				Config: testAccNodeResourceConfig(testServer.URL, []map[string]map[string]string{
+					{"someone": {"id": "someone"}},
+					{"anyone": {"id": "anyone"}},
+				}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("bosk_node.test", "value_json", `[{"someone":{"id":"someone"}},{"anyone":{"id":"anyone"}}]`),
+				),
+			},
+			// Delete testing automatically occurs in TestCase
 		},
 	})
 }

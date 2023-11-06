@@ -84,7 +84,7 @@ func (client *BoskClient) PutJSONAsString(url string, value string, diag *diag.D
 
 	defer httpResp.Body.Close()
 
-	if (httpResp.StatusCode/100 != 2) {
+	if httpResp.StatusCode/100 != 2 {
 		diag.AddError("Client Error", fmt.Sprintf("PUT returned unexpected status: %s", httpResp.Status))
 	}
 }
@@ -104,7 +104,7 @@ func (client *BoskClient) Delete(url string, diag *diag.Diagnostics) {
 
 	defer httpResp.Body.Close()
 
-	if (httpResp.StatusCode/100 != 2) {
+	if httpResp.StatusCode/100 != 2 {
 		diag.AddError("Client Error", fmt.Sprintf("PUT returned unexpected status: %s", httpResp.Status))
 	}
 }
