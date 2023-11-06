@@ -4,42 +4,84 @@
 package provider
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccNodeResource(t *testing.T) {
+	// Note that we deliberately add extra whitespace here to test normalization of JSON strings
+	// entityState := []byte(`[
+	// 	{"world":{"id":"world"}}
+	// ]`)
+	var entityState string = ""
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			if entityState == "" {
+				t.Log("GET returning 404")
+				w.WriteHeader(404)
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				_, err := w.Write([]byte(entityState))
+				if err != nil {
+					t.Errorf("error writing body: %s", err)
+				}
+				t.Logf("GET returning %s", entityState)
+			}
+		case "PUT":
+			buf := new(strings.Builder)
+			_, err := io.Copy(buf, r.Body)
+			entityState = buf.String()
+			t.Logf("PUT body %s", entityState)
+			if err != nil {
+				t.Errorf("error reading body: %s", err)
+			}
+		case "DELETE":
+			entityState = ""
+		default:
+			t.Errorf("unexpected method: %s", r.Method)
+		}
+	}))
+	defer testServer.Close()
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccNodeResourceConfig("one"),
+				Config: testAccNodeResourceConfig(testServer.URL, []map[string]map[string]string{
+					{"world": {"id": "world"}},
+				}),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("bosk_node.test", "configurable_attribute", "one"),
-					resource.TestCheckResourceAttr("bosk_node.test", "defaulted", "example value when not configured"),
-					resource.TestCheckResourceAttr("bosk_node.test", "id", "example-id"),
+					resource.TestCheckResourceAttr("bosk_node.test", "url", testServer.URL),
+					resource.TestCheckResourceAttr("bosk_node.test", "value_json", "[{\"world\":{\"id\":\"world\"}}]"),
 				),
 			},
 			// ImportState testing
 			{
-				ResourceName:      "bosk_node.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// This is not normally necessary, but is here because this
-				// example code does not have an actual upstream service.
-				// Once the Read method is able to refresh information from
-				// the upstream service, this can be removed.
-				ImportStateVerifyIgnore: []string{"configurable_attribute", "defaulted"},
+				ResourceName:                         "bosk_node.test",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "url",
+				ImportStateId:                        testServer.URL,
 			},
-			// Update and Read testing
+			// // Update and Read testing
 			{
-				Config: testAccNodeResourceConfig("two"),
+				Config: testAccNodeResourceConfig(testServer.URL, []map[string]map[string]string{
+					{"someone": {"id": "someone"}},
+					{"anyone": {"id": "anyone"}},
+				}),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("bosk_node.test", "configurable_attribute", "two"),
+					resource.TestCheckResourceAttr("bosk_node.test", "value_json", `[{"someone":{"id":"someone"}},{"anyone":{"id":"anyone"}}]`),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -47,10 +89,15 @@ func TestAccNodeResource(t *testing.T) {
 	})
 }
 
-func testAccNodeResourceConfig(configurableAttribute string) string {
+func testAccNodeResourceConfig(url string, value any) string {
+	json, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
 	return fmt.Sprintf(`
-resource "bosk_node" "test" {
-  configurable_attribute = %[1]q
-}
-`, configurableAttribute)
+		resource "bosk_node" "test" {
+			url        = "%s"
+			value_json = %s
+		}
+	`, url, strconv.Quote(string(json)))
 }
