@@ -150,6 +150,5 @@ func normalizeJSON(input []byte) ([]byte, error) {
 	if err != nil {
 		return input, err
 	}
-	fmt.Println("Returning result", result)
 	return result, nil
 }

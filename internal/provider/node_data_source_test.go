@@ -37,7 +37,7 @@ func TestAccNodeDataSource(t *testing.T) {
 				Config: fmt.Sprintf(`
 					data "bosk_node" "test" {
 						url        = "%s"
-						value_json = "[]"
+						value_json = jsonencode([])
 					}
 				`, testServer.URL),
 				Check: resource.ComposeAggregateTestCheckFunc(
