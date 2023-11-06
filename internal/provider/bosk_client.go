@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ func NewBoskClient(httpClient *http.Client) *BoskClient {
 func (client *BoskClient) GetJSONAsString(url string, diag *diag.Diagnostics) string {
 	httpResp, err := client.httpClient.Get(url)
 	if err != nil {
-		diag.AddError("Client Error", fmt.Sprintf("Unable to read node: %s", err))
+		diag.AddError("Client Error", fmt.Sprintf("Unable to GET node: %s", err))
 		return "ERROR"
 	}
 
@@ -66,4 +67,44 @@ func normalizeJSON(input []byte) ([]byte, error) {
 		return input, err
 	}
 	return result, nil
+}
+
+func (client *BoskClient) PutJSONAsString(url string, value string, diag *diag.Diagnostics) {
+	req, err := http.NewRequest("PUT", url, bytes.NewReader([]byte(value)))
+	if err != nil {
+		diag.AddError("Client Error", fmt.Sprintf("Unable to create HTTP PUT request: %s", err))
+		return
+	}
+
+	httpResp, err := client.httpClient.Do(req)
+	if err != nil {
+		diag.AddError("Client Error", fmt.Sprintf("Unable to PUT node: %s", err))
+		return
+	}
+
+	defer httpResp.Body.Close()
+
+	if (httpResp.StatusCode/100 != 2) {
+		diag.AddError("Client Error", fmt.Sprintf("PUT returned unexpected status: %s", httpResp.Status))
+	}
+}
+
+func (client *BoskClient) Delete(url string, diag *diag.Diagnostics) {
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		diag.AddError("Client Error", fmt.Sprintf("Unable to create HTTP DELETE request: %s", err))
+		return
+	}
+
+	httpResp, err := client.httpClient.Do(req)
+	if err != nil {
+		diag.AddError("Client Error", fmt.Sprintf("Unable to DELETE node: %s", err))
+		return
+	}
+
+	defer httpResp.Body.Close()
+
+	if (httpResp.StatusCode/100 != 2) {
+		diag.AddError("Client Error", fmt.Sprintf("PUT returned unexpected status: %s", httpResp.Status))
+	}
 }

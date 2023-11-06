@@ -8,12 +8,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -28,14 +24,13 @@ func NewNodeResource() resource.Resource {
 
 // NodeResource defines the resource implementation.
 type NodeResource struct {
-	client *http.Client
+	client *BoskClient
 }
 
 // NodeResourceModel describes the resource data model.
 type NodeResourceModel struct {
-	ConfigurableAttribute types.String `tfsdk:"configurable_attribute"`
-	Defaulted             types.String `tfsdk:"defaulted"`
-	Id                    types.String `tfsdk:"id"`
+	URL        types.String `tfsdk:"url"`
+	Value_json types.String `tfsdk:"value_json"`
 }
 
 func (r *NodeResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -44,26 +39,16 @@ func (r *NodeResource) Metadata(ctx context.Context, req resource.MetadataReques
 
 func (r *NodeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Node resource",
+		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
-			"configurable_attribute": schema.StringAttribute{
-				MarkdownDescription: "Node configurable attribute",
-				Optional:            true,
+			"url": schema.StringAttribute{ // TODO: Separate base URL versus path?
+				MarkdownDescription: "The HTTP address of the node",
+				Required:            true,
 			},
-			"defaulted": schema.StringAttribute{
-				MarkdownDescription: "Node configurable attribute with default value",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("example value when not configured"),
-			},
-			"id": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Node identifier",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+			"value_json": schema.StringAttribute{
+				MarkdownDescription: "The JSON-encoded contents of the node",
+				Required:            true,
 			},
 		},
 	}
@@ -79,14 +64,14 @@ func (r *NodeResource) Configure(ctx context.Context, req resource.ConfigureRequ
 
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
+			"Unexpected Data Source Configure Type",
 			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	r.client = client
+	r.client = NewBoskClient(client)
 }
 
 func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -94,51 +79,53 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Error getting plan data", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create example, got error: %s", err))
-	//     return
-	// }
+	r.client.PutJSONAsString(data.URL.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Error performing PUT", map[string]interface{}{"diagnostics": resp.Diagnostics})
+		return
+	}
 
-	// For the purposes of this example code, hardcoding a response value to
-	// save into the Terraform state.
-	data.Id = types.StringValue("example-id")
-
-	// Write logs using the tflog package
-	// Documentation: https://terraform.io/plugin/log
-	tflog.Trace(ctx, "created a resource")
+	tflog.Debug(ctx, "created bosk node", map[string]interface{}{
+		"url": data.URL.ValueString(),
+	})
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data NodeResourceModel
+	var data NodeDataSourceModel
 
-	// Read Terraform prior state data into the model
+	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Error getting plan data", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
-	//     return
-	// }
+	result_json := r.client.GetJSONAsString(data.URL.ValueString(), &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Error performing GET", map[string]interface{}{"diagnostics": resp.Diagnostics})
+		return
+	}
 
-	// Save updated data into Terraform state
+	data.Value_json = types.StringValue(result_json)
+
+	tflog.Debug(ctx, "read bosk node", map[string]interface{}{
+		"url": data.URL.ValueString(),
+	})
+
+	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Error setting state", map[string]interface{}{"diagnostics": resp.Diagnostics})
+		return
+	}
 }
 
 func (r *NodeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -146,42 +133,61 @@ func (r *NodeResource) Update(ctx context.Context, req resource.UpdateRequest, r
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update example, got error: %s", err))
-	//     return
-	// }
+	r.client.PutJSONAsString(data.URL.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	// Save updated data into Terraform state
+	tflog.Debug(ctx, "updated bosk node", map[string]interface{}{
+		"url": data.URL.ValueString(),
+	})
+
+	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data NodeResourceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete example, got error: %s", err))
-	//     return
-	// }
+	r.client.Delete(data.URL.ValueString(), &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	tflog.Debug(ctx, "deleted bosk node", map[string]interface{}{
+		"url": data.URL.ValueString(),
+	})
+
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *NodeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	url := req.ID
+
+	result_json := r.client.GetJSONAsString(url, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	data := NodeResourceModel{
+		URL:        types.StringValue(url),
+		Value_json: types.StringValue(result_json),
+	}
+
+	tflog.Debug(ctx, "imported bosk node", map[string]interface{}{
+		"url": data.URL.ValueString(),
+	})
+
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

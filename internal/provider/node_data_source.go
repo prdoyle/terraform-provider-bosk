@@ -38,7 +38,6 @@ func (d *NodeDataSource) Metadata(ctx context.Context, req datasource.MetadataRe
 
 func (d *NodeDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
@@ -90,7 +89,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	data.Value_json = types.StringValue(result_json)
 
-	tflog.Trace(ctx, "read bosk node", map[string]interface{}{
+	tflog.Debug(ctx, "read bosk node datasource", map[string]interface{}{
 		"url": data.URL.ValueString(),
 	})
 
