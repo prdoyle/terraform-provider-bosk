@@ -13,8 +13,7 @@ description: |-
 ## Example Usage
 
 ```terraform
-provider "scaffolding" {
-  # example configuration here
+provider "bosk" {
 }
 ```
 

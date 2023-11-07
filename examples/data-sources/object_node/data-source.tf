@@ -1,3 +1,4 @@
 data "object-node" "example" {
-  configurable_attribute = "some-value"
+  url        = "http://localhost:1740/bosk/"
+  value_json = "[{\"world\":{\"id\":\"world\"}}]"
 }
