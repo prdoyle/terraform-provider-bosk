@@ -25,16 +25,9 @@ func testAccPreCheck(t *testing.T) {
 	// function.
 }
 
-func splitURL(url string) (base, path string) {
-	parts := strings.SplitN(url, "/", 4)
+func baseURL(url string) string {
+	parts := strings.SplitN(url, "/", 3)
 	protocol := parts[0]
 	host := parts[2]
-	if len(parts) == 4 {
-		path = "/" + parts[3]
-	} else {
-		path = "/"
-	}
-	base = protocol + "//" + host
-	//fmt.Printf("HEY HEY base: \"%v\", path: \"%v\"", base, path)
-	return base, path
+	return protocol + "//" + host
 }

@@ -52,7 +52,7 @@ func TestAccNodeResource(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	base, _ := splitURL(testServer.URL)
+	base := baseURL(testServer.URL)
 	path := "/bosk/path/to/object"
 
 	resource.Test(t, resource.TestCase{
