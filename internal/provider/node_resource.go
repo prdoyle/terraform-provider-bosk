@@ -6,7 +6,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -29,7 +28,7 @@ type NodeResource struct {
 
 // NodeResourceModel describes the resource data model.
 type NodeResourceModel struct {
-	URL        types.String `tfsdk:"url"`
+	Path       types.String `tfsdk:"path"`
 	Value_json types.String `tfsdk:"value_json"`
 }
 
@@ -42,8 +41,8 @@ func (r *NodeResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
-			"url": schema.StringAttribute{ // TODO: Separate base URL versus path?
-				MarkdownDescription: "The HTTP address of the node",
+			"path": schema.StringAttribute{
+				MarkdownDescription: "When appended to the provider base_url, gives the HTTP address of the node",
 				Required:            true,
 			},
 			"value_json": schema.StringAttribute{
@@ -60,18 +59,18 @@ func (r *NodeResource) Configure(ctx context.Context, req resource.ConfigureRequ
 		return
 	}
 
-	client, ok := req.ProviderData.(*http.Client)
+	client, ok := req.ProviderData.(*BoskClient)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *BoskClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	r.client = NewBoskClient(client)
+	r.client = client
 }
 
 func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -84,14 +83,14 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	r.client.PutJSONAsString(data.URL.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
+	r.client.PutJSONAsString(r.client.urlPrefix + data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		tflog.Warn(ctx, "Error performing PUT", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
 	}
 
 	tflog.Debug(ctx, "created bosk node", map[string]interface{}{
-		"url": data.URL.ValueString(),
+		"path": data.Path.ValueString(),
 	})
 
 	// Save data into Terraform state
@@ -99,7 +98,7 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 }
 
 func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data NodeDataSourceModel
+	var data NodeResourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -108,7 +107,7 @@ func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	result_json := r.client.GetJSONAsString(data.URL.ValueString(), &resp.Diagnostics)
+	result_json := r.client.GetJSONAsString(r.client.urlPrefix + data.Path.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		tflog.Warn(ctx, "Error performing GET", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
@@ -117,7 +116,7 @@ func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	data.Value_json = types.StringValue(result_json)
 
 	tflog.Debug(ctx, "read bosk node", map[string]interface{}{
-		"url": data.URL.ValueString(),
+		"url": data.Path.ValueString(),
 	})
 
 	// Save data into Terraform state
@@ -137,13 +136,13 @@ func (r *NodeResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	r.client.PutJSONAsString(data.URL.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
+	r.client.PutJSONAsString(r.client.urlPrefix + data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	tflog.Debug(ctx, "updated bosk node", map[string]interface{}{
-		"url": data.URL.ValueString(),
+		"path": data.Path.ValueString(),
 	})
 
 	// Save data into Terraform state
@@ -158,13 +157,13 @@ func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
-	r.client.Delete(data.URL.ValueString(), &resp.Diagnostics)
+	r.client.Delete(r.client.urlPrefix + data.Path.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	tflog.Debug(ctx, "deleted bosk node", map[string]interface{}{
-		"url": data.URL.ValueString(),
+		"path": data.Path.ValueString(),
 	})
 
 	// Save data into Terraform state
@@ -172,20 +171,20 @@ func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 }
 
 func (r *NodeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	url := req.ID
+	path := req.ID
 
-	result_json := r.client.GetJSONAsString(url, &resp.Diagnostics)
+	result_json := r.client.GetJSONAsString(r.client.urlPrefix + path, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	data := NodeResourceModel{
-		URL:        types.StringValue(url),
+		Path:       types.StringValue(path),
 		Value_json: types.StringValue(result_json),
 	}
 
 	tflog.Debug(ctx, "imported bosk node", map[string]interface{}{
-		"url": data.URL.ValueString(),
+		"path": data.Path.ValueString(),
 	})
 
 	// Save data into Terraform state
