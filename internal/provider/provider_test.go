@@ -29,7 +29,7 @@ func splitURL(url string) (base, path string) {
 	parts := strings.SplitN(url, "/", 4)
 	protocol := parts[0]
 	host := parts[2]
-	if (len(parts) == 4) {
+	if len(parts) == 4 {
 		path = "/" + parts[3]
 	} else {
 		path = "/"

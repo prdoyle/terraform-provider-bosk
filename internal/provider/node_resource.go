@@ -100,7 +100,7 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	r.client.PutJSONAsString(r.client.urlPrefix + data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
+	r.client.PutJSONAsString(r.client.urlPrefix+data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		tflog.Warn(ctx, "Error performing PUT", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
@@ -129,7 +129,7 @@ func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	result_json := r.client.GetJSONAsString(r.client.urlPrefix + data.Path.ValueString(), &resp.Diagnostics)
+	result_json := r.client.GetJSONAsString(r.client.urlPrefix+data.Path.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		tflog.Warn(ctx, "Error performing GET", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
@@ -163,7 +163,7 @@ func (r *NodeResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	r.client.PutJSONAsString(r.client.urlPrefix + data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
+	r.client.PutJSONAsString(r.client.urlPrefix+data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -189,7 +189,7 @@ func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
-	r.client.Delete(r.client.urlPrefix + data.Path.ValueString(), &resp.Diagnostics)
+	r.client.Delete(r.client.urlPrefix+data.Path.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -205,7 +205,7 @@ func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 func (r *NodeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	path := req.ID
 
-	result_json := r.client.GetJSONAsString(r.client.urlPrefix + path, &resp.Diagnostics)
+	result_json := r.client.GetJSONAsString(r.client.urlPrefix+path, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

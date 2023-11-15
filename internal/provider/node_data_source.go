@@ -80,7 +80,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 
-	result_json := d.client.GetJSONAsString(d.client.urlPrefix + data.Path.ValueString(), &resp.Diagnostics)
+	result_json := d.client.GetJSONAsString(d.client.urlPrefix+data.Path.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

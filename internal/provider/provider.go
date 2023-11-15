@@ -30,7 +30,7 @@ type BoskProvider struct {
 
 // BoskProviderModel describes the provider data model.
 type BoskProviderModel struct {
-	BaseURL types.String `tfsdk:"base_url"`
+	BaseURL            types.String `tfsdk:"base_url"`
 	BasicAuthVarSuffix types.String `tfsdk:"basic_auth_var_suffix"`
 }
 
@@ -63,13 +63,13 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	var baseURL string = data.BaseURL.ValueString()
-	if (!(strings.HasPrefix(baseURL, "http://") || strings.HasPrefix(baseURL, "https://"))) {
+	if !(strings.HasPrefix(baseURL, "http://") || strings.HasPrefix(baseURL, "https://")) {
 		resp.Diagnostics.AddError(
 			"Base URL must be http or https",
 			fmt.Sprintf("Expected base_url field to start with either \"http://\" or \"https://\". Got: %v", baseURL),
 		)
 	}
-	if (strings.HasSuffix(baseURL, "/")) {
+	if strings.HasSuffix(baseURL, "/") {
 		resp.Diagnostics.AddError(
 			"Base URL must not end with \"/\"",
 			fmt.Sprintf("The base_url field will be prepended to the bosk node paths, which start with slashes, and so the base_url itself must not end with a slash. Got: %v", baseURL),
@@ -83,21 +83,21 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	password, passwordExists := os.LookupEnv(passwordVar)
 	var client *BoskClient
 
-	if (suffix == "NO_AUTH") {
+	if suffix == "NO_AUTH" {
 		client = NewBoskClientWithoutAuth(http.DefaultClient, baseURL)
-		if (usernameExists) {
+		if usernameExists {
 			resp.Diagnostics.AddWarning(
 				"NO_AUTH suffix overrides username environment variable",
 				fmt.Sprintf("Based on basic_auth_var_suffix of \"%v\", ignoring environment variable \"TF_BOSK_USERNAME_%v\"", suffix, suffix),
 			)
 		}
-		if (passwordExists) {
+		if passwordExists {
 			resp.Diagnostics.AddWarning(
 				"NO_AUTH suffix overrides password environment variable",
 				fmt.Sprintf("Based on basic_auth_var_suffix of \"%v\", ignoring environment variable \"TF_BOSK_PASSWORD_%v\"", suffix, suffix),
 			)
 		}
-	} else if (usernameExists && passwordExists) {
+	} else if usernameExists && passwordExists {
 		client = NewBoskClient(http.DefaultClient, baseURL, username, password)
 	} else {
 		resp.Diagnostics.AddError(
