@@ -4,7 +4,6 @@
 package provider
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -31,11 +30,11 @@ func splitURL(url string) (base, path string) {
 	protocol := parts[0]
 	host := parts[2]
 	if (len(parts) == 4) {
-		path = parts[3]
+		path = "/" + parts[3]
 	} else {
-		path = ""
+		path = "/"
 	}
-	base = protocol + "//" + host + "/"
-	fmt.Printf("HEY HEY base: \"%v\", path: \"%v\"", base, path)
+	base = protocol + "//" + host
+	//fmt.Printf("HEY HEY base: \"%v\", path: \"%v\"", base, path)
 	return base, path
 }

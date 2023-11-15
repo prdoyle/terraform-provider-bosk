@@ -6,7 +6,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -73,6 +75,15 @@ func (r *NodeResource) Configure(ctx context.Context, req resource.ConfigureRequ
 	r.client = client
 }
 
+func (m *NodeResourceModel) Validate(diag *diag.Diagnostics) {
+	if !strings.HasPrefix(m.Path.ValueString(), "/") {
+		diag.AddError(
+			"Path does not start with slash character \"/\"",
+			fmt.Sprintf("Bosk node paths must start with a slash. Got: %v", m.Path.ValueString()),
+		)
+	}
+}
+
 func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data NodeResourceModel
 
@@ -80,6 +91,12 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		tflog.Warn(ctx, "Error getting plan data", map[string]interface{}{"diagnostics": resp.Diagnostics})
+		return
+	}
+
+	data.Validate(&resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Invalid plan", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
 	}
 
@@ -104,6 +121,11 @@ func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		tflog.Warn(ctx, "Error getting plan data", map[string]interface{}{"diagnostics": resp.Diagnostics})
+		return
+	}
+	data.Validate(&resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Invalid state", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
 	}
 
@@ -135,6 +157,11 @@ func (r *NodeResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	data.Validate(&resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Invalid plan", map[string]interface{}{"diagnostics": resp.Diagnostics})
+		return
+	}
 
 	r.client.PutJSONAsString(r.client.urlPrefix + data.Path.ValueString(), data.Value_json.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -154,6 +181,11 @@ func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	data.Validate(&resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		tflog.Warn(ctx, "Invalid state", map[string]interface{}{"diagnostics": resp.Diagnostics})
 		return
 	}
 

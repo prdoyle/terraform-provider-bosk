@@ -43,11 +43,11 @@ func (p *BoskProvider) Schema(ctx context.Context, req provider.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
-				MarkdownDescription: "Specifies the URL of the bosk API. Used as a prefix for all HTTP requests. Ends with a slash.",
+				MarkdownDescription: "Specifies the URL of the bosk API. Used as a prefix for all HTTP requests. Does not end with a slash.",
 				Required:            true,
 			},
 			"basic_auth_var_suffix": schema.StringAttribute{
-				MarkdownDescription: "Selects the environment variables to use for HTTP basic authentication; namely TF_BOSK_USERNAME_xxx and TF_BOSK_PASSWORD_xxx. If you don't want to use basic auth, set both these variables to blanks.",
+				MarkdownDescription: "Selects the environment variables to use for HTTP basic authentication; namely TF_BOSK_USERNAME_xxx and TF_BOSK_PASSWORD_xxx. If you don't want to use basic auth, specify NO_AUTH.",
 				Required:            true,
 			},
 		},
@@ -69,10 +69,10 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 			fmt.Sprintf("Expected base_url field to start with either \"http://\" or \"https://\". Got: %v", baseURL),
 		)
 	}
-	if (!(strings.HasSuffix(baseURL, "/"))) {
+	if (strings.HasSuffix(baseURL, "/")) {
 		resp.Diagnostics.AddError(
-			"Base URL must end with \"/\"",
-			fmt.Sprintf("Expected base_url field to end with a slash character \"/\". Got: %v", baseURL),
+			"Base URL must not end with \"/\"",
+			fmt.Sprintf("The base_url field will be prepended to the bosk node paths, which start with slashes, and so the base_url itself must not end with a slash. Got: %v", baseURL),
 		)
 	}
 

@@ -65,7 +65,6 @@ func (d *NodeDataSource) Configure(ctx context.Context, req datasource.Configure
 			"Unexpected Data Source Configure Type",
 			fmt.Sprintf("Expected *BoskClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
-
 		return
 	}
 
