@@ -52,17 +52,20 @@ func TestAccNodeResource(t *testing.T) {
 	}))
 	defer testServer.Close()
 
+	base := baseURL(testServer.URL)
+	path := "/bosk/path/to/object"
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccNodeResourceConfig(testServer.URL, []map[string]map[string]string{
+				Config: testAccNodeResourceConfig(base, path, []map[string]map[string]string{
 					{"world": {"id": "world"}},
 				}),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("bosk_node.test", "url", testServer.URL),
+					resource.TestCheckResourceAttr("bosk_node.test", "path", path),
 					resource.TestCheckResourceAttr("bosk_node.test", "value_json", "[{\"world\":{\"id\":\"world\"}}]"),
 				),
 			},
@@ -71,12 +74,12 @@ func TestAccNodeResource(t *testing.T) {
 				ResourceName:                         "bosk_node.test",
 				ImportState:                          true,
 				ImportStateVerify:                    true,
-				ImportStateVerifyIdentifierAttribute: "url",
-				ImportStateId:                        testServer.URL,
+				ImportStateVerifyIdentifierAttribute: "path",
+				ImportStateId:                        path,
 			},
 			// // Update and Read testing
 			{
-				Config: testAccNodeResourceConfig(testServer.URL, []map[string]map[string]string{
+				Config: testAccNodeResourceConfig(base, path, []map[string]map[string]string{
 					{"someone": {"id": "someone"}},
 					{"anyone": {"id": "anyone"}},
 				}),
@@ -89,15 +92,19 @@ func TestAccNodeResource(t *testing.T) {
 	})
 }
 
-func testAccNodeResourceConfig(url string, value any) string {
+func testAccNodeResourceConfig(base, path string, value any) string {
 	json, err := json.Marshal(value)
 	if err != nil {
 		panic(err)
 	}
 	return fmt.Sprintf(`
+		provider "bosk" {
+			base_url              = "%s"
+			basic_auth_var_suffix = "NO_AUTH"
+		}
 		resource "bosk_node" "test" {
-			url        = "%s"
+			path       = "%s"
 			value_json = %s
 		}
-	`, url, strconv.Quote(string(json)))
+	`, base, path, strconv.Quote(string(json)))
 }

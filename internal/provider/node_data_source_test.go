@@ -28,6 +28,9 @@ func TestAccNodeDataSource(t *testing.T) {
 	}))
 	defer testServer.Close()
 
+	base := baseURL(testServer.URL)
+	path := "/bosk/path/to/object"
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -35,13 +38,17 @@ func TestAccNodeDataSource(t *testing.T) {
 			// Read testing
 			{
 				Config: fmt.Sprintf(`
+				 	provider "bosk" {
+						base_url              = "%s"
+						basic_auth_var_suffix = "NO_AUTH"
+					}
 					data "bosk_node" "test" {
-						url        = "%s"
+						path       = "%s"
 						value_json = jsonencode([])
 					}
-				`, testServer.URL),
+				`, base, path),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.bosk_node.test", "url", testServer.URL),
+					resource.TestCheckResourceAttr("data.bosk_node.test", "path", path),
 					resource.TestCheckResourceAttr("data.bosk_node.test", "value_json", "[{\"world\":{\"id\":\"world\"}}]"),
 				),
 			},

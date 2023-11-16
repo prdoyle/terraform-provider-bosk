@@ -13,21 +13,57 @@ import (
 
 type BoskClient struct {
 	httpClient *http.Client
+	urlPrefix  string
+	auth       *BasicAuth
 }
 
-func NewBoskClient(httpClient *http.Client) *BoskClient {
-	return &BoskClient{httpClient: httpClient}
+type BasicAuth struct {
+	username string
+	password string
+}
+
+func NewBoskClientWithoutAuth(httpClient *http.Client, urlPrefix string) *BoskClient {
+	return &BoskClient{
+		httpClient: httpClient,
+		urlPrefix:  urlPrefix,
+		auth:       nil,
+	}
+}
+
+func NewBoskClient(httpClient *http.Client, urlPrefix string, username string, password string) *BoskClient {
+	return &BoskClient{
+		httpClient: httpClient,
+		urlPrefix:  urlPrefix,
+		auth: &BasicAuth{
+			username: username,
+			password: password,
+		},
+	}
 }
 
 // Portions taken from: https://github.com/hashicorp/terraform-provider-http/blob/main/internal/provider/data_source_http.go
 func (client *BoskClient) GetJSONAsString(url string, diag *diag.Diagnostics) string {
-	httpResp, err := client.httpClient.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		diag.AddError("Client Error", fmt.Sprintf("Unable to GET node: %s", err))
+		diag.AddError("Client Error", fmt.Sprintf("Unable to create HTTP request: %s", err))
+		return "ERROR"
+	}
+
+	if client.auth != nil {
+		req.SetBasicAuth(client.auth.username, client.auth.password)
+	}
+	httpResp, err := client.httpClient.Do(req)
+	if err != nil {
+		diag.AddError("Client Error", fmt.Sprintf("Unable to %v %v: %s", req.Method, url, err))
 		return "ERROR"
 	}
 
 	defer httpResp.Body.Close()
+
+	if httpResp.StatusCode/100 != 2 {
+		diag.AddError("Client Error", fmt.Sprintf("%v %v returned unexpected status %s", req.Method, url, httpResp.Status))
+		return "ERROR"
+	}
 
 	bytes, err := io.ReadAll(httpResp.Body)
 	if err != nil {
@@ -75,6 +111,9 @@ func (client *BoskClient) PutJSONAsString(url string, value string, diag *diag.D
 		diag.AddError("Client Error", fmt.Sprintf("Unable to create HTTP PUT request: %s", err))
 		return
 	}
+	if client.auth != nil {
+		req.SetBasicAuth(client.auth.username, client.auth.password)
+	}
 
 	httpResp, err := client.httpClient.Do(req)
 	if err != nil {
@@ -91,6 +130,9 @@ func (client *BoskClient) PutJSONAsString(url string, value string, diag *diag.D
 
 func (client *BoskClient) Delete(url string, diag *diag.Diagnostics) {
 	req, err := http.NewRequest("DELETE", url, nil)
+	if client.auth != nil {
+		req.SetBasicAuth(client.auth.username, client.auth.password)
+	}
 	if err != nil {
 		diag.AddError("Client Error", fmt.Sprintf("Unable to create HTTP DELETE request: %s", err))
 		return
@@ -105,6 +147,6 @@ func (client *BoskClient) Delete(url string, diag *diag.Diagnostics) {
 	defer httpResp.Body.Close()
 
 	if httpResp.StatusCode/100 != 2 {
-		diag.AddError("Client Error", fmt.Sprintf("PUT returned unexpected status: %s", httpResp.Status))
+		diag.AddError("Client Error", fmt.Sprintf("DELETE returned unexpected status: %s", httpResp.Status))
 	}
 }

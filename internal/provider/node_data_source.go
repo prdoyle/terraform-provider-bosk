@@ -6,7 +6,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -28,7 +27,7 @@ type NodeDataSource struct {
 
 // NodeDataSourceModel describes the data source data model.
 type NodeDataSourceModel struct {
-	URL        types.String `tfsdk:"url"`
+	Path       types.String `tfsdk:"path"`
 	Value_json types.String `tfsdk:"value_json"`
 }
 
@@ -41,8 +40,8 @@ func (d *NodeDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
-			"url": schema.StringAttribute{ // TODO: Separate base URL versus path?
-				MarkdownDescription: "The HTTP address of the node",
+			"path": schema.StringAttribute{
+				MarkdownDescription: "When appended to the provider base_url, gives the HTTP address of the node",
 				Required:            true,
 			},
 			"value_json": schema.StringAttribute{
@@ -59,18 +58,17 @@ func (d *NodeDataSource) Configure(ctx context.Context, req datasource.Configure
 		return
 	}
 
-	client, ok := req.ProviderData.(*http.Client)
+	client, ok := req.ProviderData.(*BoskClient)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *BoskClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
-
 		return
 	}
 
-	d.client = NewBoskClient(client)
+	d.client = client
 }
 
 func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -82,7 +80,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 
-	result_json := d.client.GetJSONAsString(data.URL.ValueString(), &resp.Diagnostics)
+	result_json := d.client.GetJSONAsString(d.client.urlPrefix+data.Path.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -90,7 +88,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	data.Value_json = types.StringValue(result_json)
 
 	tflog.Debug(ctx, "read bosk node datasource", map[string]interface{}{
-		"url": data.URL.ValueString(),
+		"path": data.Path.ValueString(),
 	})
 
 	// Save data into Terraform state
