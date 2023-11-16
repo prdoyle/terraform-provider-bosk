@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -22,4 +23,11 @@ func testAccPreCheck(t *testing.T) {
 	// You can add code here to run prior to any test case execution, for example assertions
 	// about the appropriate environment variables being set are common to see in a pre-check
 	// function.
+}
+
+func baseURL(url string) string {
+	parts := strings.SplitN(url, "/", 3)
+	protocol := parts[0]
+	host := parts[2]
+	return protocol + "//" + host
 }
