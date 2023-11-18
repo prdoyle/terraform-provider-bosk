@@ -17,5 +17,5 @@ Bosk state tree node data source
 
 ### Required
 
-- `path` (String) When appended to the provider base_url, gives the HTTP address of the node
+- `url` (String) Specifies the HTTP address of URL of the bosk node.
 - `value_json` (String) The JSON-encoded contents of the node

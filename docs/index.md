@@ -22,5 +22,4 @@ provider "bosk" {
 
 ### Required
 
-- `base_url` (String) Specifies the URL of the bosk API. Used as a prefix for all HTTP requests. Does not end with a slash.
 - `basic_auth_var_suffix` (String) Selects the environment variables to use for HTTP basic authentication; namely TF_BOSK_USERNAME_xxx and TF_BOSK_PASSWORD_xxx. If you don't want to use basic auth, specify NO_AUTH.

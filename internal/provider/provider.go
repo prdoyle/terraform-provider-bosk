@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -30,7 +29,6 @@ type BoskProvider struct {
 
 // BoskProviderModel describes the provider data model.
 type BoskProviderModel struct {
-	BaseURL            types.String `tfsdk:"base_url"`
 	BasicAuthVarSuffix types.String `tfsdk:"basic_auth_var_suffix"`
 }
 
@@ -42,10 +40,6 @@ func (p *BoskProvider) Metadata(ctx context.Context, req provider.MetadataReques
 func (p *BoskProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"base_url": schema.StringAttribute{
-				MarkdownDescription: "Specifies the URL of the bosk API. Used as a prefix for all HTTP requests. Does not end with a slash.",
-				Required:            true,
-			},
 			"basic_auth_var_suffix": schema.StringAttribute{
 				MarkdownDescription: "Selects the environment variables to use for HTTP basic authentication; namely TF_BOSK_USERNAME_xxx and TF_BOSK_PASSWORD_xxx. If you don't want to use basic auth, specify NO_AUTH.",
 				Required:            true,
@@ -62,20 +56,6 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	var baseURL string = data.BaseURL.ValueString()
-	if !(strings.HasPrefix(baseURL, "http://") || strings.HasPrefix(baseURL, "https://")) {
-		resp.Diagnostics.AddError(
-			"Base URL must be http or https",
-			fmt.Sprintf("Expected base_url field to start with either \"http://\" or \"https://\". Got: %v", baseURL),
-		)
-	}
-	if strings.HasSuffix(baseURL, "/") {
-		resp.Diagnostics.AddError(
-			"Base URL must not end with \"/\"",
-			fmt.Sprintf("The base_url field will be prepended to the bosk node paths, which start with slashes, and so the base_url itself must not end with a slash. Got: %v", baseURL),
-		)
-	}
-
 	var suffix = data.BasicAuthVarSuffix.ValueString()
 	var usernameVar = "TF_BOSK_USERNAME_" + suffix
 	var passwordVar = "TF_BOSK_PASSWORD_" + suffix
@@ -84,7 +64,7 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	var client *BoskClient
 
 	if suffix == "NO_AUTH" {
-		client = NewBoskClientWithoutAuth(http.DefaultClient, baseURL)
+		client = NewBoskClientWithoutAuth(http.DefaultClient)
 		if usernameExists {
 			resp.Diagnostics.AddWarning(
 				"NO_AUTH suffix overrides username environment variable",
@@ -98,7 +78,7 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 			)
 		}
 	} else if usernameExists && passwordExists {
-		client = NewBoskClient(http.DefaultClient, baseURL, username, password)
+		client = NewBoskClient(http.DefaultClient, username, password)
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing environment variables for authentication",
