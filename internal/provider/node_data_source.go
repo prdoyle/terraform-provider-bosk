@@ -25,12 +25,6 @@ type NodeDataSource struct {
 	client *BoskClient
 }
 
-// NodeDataSourceModel describes the data source data model.
-type NodeDataSourceModel struct {
-	Path       types.String `tfsdk:"path"`
-	Value_json types.String `tfsdk:"value_json"`
-}
-
 func (d *NodeDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_node"
 }
@@ -40,8 +34,8 @@ func (d *NodeDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 		MarkdownDescription: "Bosk state tree node data source",
 
 		Attributes: map[string]schema.Attribute{
-			"path": schema.StringAttribute{
-				MarkdownDescription: "When appended to the provider base_url, gives the HTTP address of the node",
+			"url": schema.StringAttribute{
+				MarkdownDescription: "Specifies the HTTP address of URL of the bosk node.",
 				Required:            true,
 			},
 			"value_json": schema.StringAttribute{
@@ -72,7 +66,7 @@ func (d *NodeDataSource) Configure(ctx context.Context, req datasource.Configure
 }
 
 func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data NodeDataSourceModel
+	var data NodeModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -80,7 +74,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 
-	result_json := d.client.GetJSONAsString(d.client.urlPrefix+data.Path.ValueString(), &resp.Diagnostics)
+	result_json := d.client.GetJSONAsString(data.URL.ValueString(), &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -88,7 +82,7 @@ func (d *NodeDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	data.Value_json = types.StringValue(result_json)
 
 	tflog.Debug(ctx, "read bosk node datasource", map[string]interface{}{
-		"path": data.Path.ValueString(),
+		"url": data.URL.ValueString(),
 	})
 
 	// Save data into Terraform state

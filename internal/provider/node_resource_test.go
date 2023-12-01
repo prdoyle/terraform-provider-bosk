@@ -52,7 +52,7 @@ func TestAccNodeResource(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	base := baseURL(testServer.URL)
+	base := testServer.URL
 	path := "/bosk/path/to/object"
 
 	resource.Test(t, resource.TestCase{
@@ -65,7 +65,7 @@ func TestAccNodeResource(t *testing.T) {
 					{"world": {"id": "world"}},
 				}),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("bosk_node.test", "path", path),
+					resource.TestCheckResourceAttr("bosk_node.test", "url", base+path),
 					resource.TestCheckResourceAttr("bosk_node.test", "value_json", "[{\"world\":{\"id\":\"world\"}}]"),
 				),
 			},
@@ -74,8 +74,8 @@ func TestAccNodeResource(t *testing.T) {
 				ResourceName:                         "bosk_node.test",
 				ImportState:                          true,
 				ImportStateVerify:                    true,
-				ImportStateVerifyIdentifierAttribute: "path",
-				ImportStateId:                        path,
+				ImportStateVerifyIdentifierAttribute: "url",
+				ImportStateId:                        base+path,
 			},
 			// // Update and Read testing
 			{
@@ -99,11 +99,10 @@ func testAccNodeResourceConfig(base, path string, value any) string {
 	}
 	return fmt.Sprintf(`
 		provider "bosk" {
-			base_url              = "%s"
 			basic_auth_var_suffix = "NO_AUTH"
 		}
 		resource "bosk_node" "test" {
-			path       = "%s"
+			url        = "%s%s"
 			value_json = %s
 		}
 	`, base, path, strconv.Quote(string(json)))

@@ -13,7 +13,6 @@ import (
 
 type BoskClient struct {
 	httpClient *http.Client
-	urlPrefix  string
 	auth       *BasicAuth
 }
 
@@ -22,18 +21,16 @@ type BasicAuth struct {
 	password string
 }
 
-func NewBoskClientWithoutAuth(httpClient *http.Client, urlPrefix string) *BoskClient {
+func NewBoskClientWithoutAuth(httpClient *http.Client) *BoskClient {
 	return &BoskClient{
 		httpClient: httpClient,
-		urlPrefix:  urlPrefix,
 		auth:       nil,
 	}
 }
 
-func NewBoskClient(httpClient *http.Client, urlPrefix string, username string, password string) *BoskClient {
+func NewBoskClient(httpClient *http.Client, username string, password string) *BoskClient {
 	return &BoskClient{
 		httpClient: httpClient,
-		urlPrefix:  urlPrefix,
 		auth: &BasicAuth{
 			username: username,
 			password: password,
