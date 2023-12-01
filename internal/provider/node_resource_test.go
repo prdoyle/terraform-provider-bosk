@@ -75,7 +75,7 @@ func TestAccNodeResource(t *testing.T) {
 				ImportState:                          true,
 				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "url",
-				ImportStateId:                        base+path,
+				ImportStateId:                        base + path,
 			},
 			// // Update and Read testing
 			{
