@@ -65,6 +65,15 @@ func TestConfigValidate(t *testing.T) {
 			},
 			want: "managed by the provider",
 		},
+		{
+			name: "insecure with CA",
+			cfg: bosk.Config{
+				Endpoint:           endpoint,
+				CACert:             "some certificate",
+				InsecureSkipVerify: true,
+			},
+			want: "ca_cert",
+		},
 	}
 
 	for _, test := range tests {
