@@ -14,7 +14,7 @@ bosk maintenance HTTP API.
 
 - A bosk application using `bosk-spring-boot` with the maintenance endpoints enabled.
 - Terraform 1.13 or later.
-- Go 1.25 or later to build from source.
+- Go 1.26 or later to build from source.
 
 ## Usage
 
@@ -127,6 +127,26 @@ import {
   }
 }
 ```
+
+## Security
+
+- The maintenance endpoints expose full read and write access to the state
+  tree. Enable them with `bosk.web.maintenance.access=AUTHENTICATED`, require
+  TLS, and use a credential with the smallest appropriate authority (for
+  example `bosk:state`).
+- The provider verifies TLS certificates by default. Prefer `ca_cert` for a
+  private CA. Use `insecure_skip_verify` only for local development; the
+  provider warns when it is enabled, and it cannot be combined with `ca_cert`.
+- Credentials are marked sensitive and are not logged. They can still appear
+  in Terraform variables, saved plans, and CI configuration, so protect those
+  artifacts.
+- Node values are stored in Terraform state. Error diagnostics can include
+  observed node values and bosk response bodies (truncated). Use encrypted
+  remote state and restrict access to plans, state, and logs. Do not put
+  secrets in nodes unless you have accepted those exposures.
+- Client certificates (mTLS) are not yet supported. Server-side certificates,
+  private CAs, and custom headers are supported.
+- Report suspected vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## Development
 
