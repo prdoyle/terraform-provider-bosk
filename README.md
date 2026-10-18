@@ -14,7 +14,7 @@ bosk maintenance HTTP API.
 
 - A bosk application using `bosk-spring-boot` with the maintenance endpoints enabled.
 - Terraform 1.13 or later.
-- Go 1.26 or later to build from source.
+- Go 1.26.9 or later to build from source.
 
 ## Usage
 
