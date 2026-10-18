@@ -252,7 +252,9 @@ func (p *BoskProvider) Resources(ctx context.Context) []func() resource.Resource
 }
 
 func (p *BoskProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		NewNodeDataSource,
+	}
 }
 
 func New(version string) func() provider.Provider {
