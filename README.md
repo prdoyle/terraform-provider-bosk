@@ -1,64 +1,150 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# Terraform Provider for bosk
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+Manages nodes in a [bosk](https://github.com/boskworks/bosk) state tree through the
+bosk maintenance HTTP API.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
-
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
-
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
-
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
-
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+> **Warning**
+> The maintenance endpoints expose full read and write access to the state tree.
+> Enable them deliberately, require authentication
+> (`bosk.web.maintenance.access=AUTHENTICATED`), and use a credential with the
+> smallest appropriate authority, such as `bosk:state`. Do not expose them to
+> untrusted networks.
 
 ## Requirements
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.24
+- A bosk application using `bosk-spring-boot` with the maintenance endpoints enabled.
+- Terraform 1.13 or later.
+- Go 1.25 or later to build from source.
 
-## Building the Provider
+## Usage
 
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+```hcl
+terraform {
+  required_providers {
+    bosk = {
+      source = "prdoyle/bosk"
+    }
+  }
+}
 
-```shell
-go install
+provider "bosk" {
+  endpoint = "https://app.example.com/bosk/state"
+  token    = var.bosk_token
+}
+
+resource "bosk_node" "world" {
+  path = "/targets/world"
+  value = jsonencode({
+    id   = "world"
+    name = "World"
+  })
+}
 ```
 
-## Adding Dependencies
+## Provider configuration
 
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
+| Attribute | Environment variable | Description |
+|---|---|---|
+| `endpoint` | `BOSK_ENDPOINT` | Base URL of the maintenance endpoints. |
+| `token` | `BOSK_TOKEN` | Bearer token. |
+| `username` | `BOSK_USERNAME` | HTTP Basic username. |
+| `password` | `BOSK_PASSWORD` | HTTP Basic password. |
+| `headers` | | Additional HTTP headers. |
+| `request_timeout` | `BOSK_REQUEST_TIMEOUT` | Per-request timeout; defaults to `10s`. |
+| `ca_cert` | `BOSK_CA_CERT` | PEM-encoded CA certificate. |
+| `insecure_skip_verify` | `BOSK_INSECURE_SKIP_VERIFY` | Skip TLS verification; local development only. |
 
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
+Set either `token` or `username`/`password`, not both.
 
-```shell
-go get github.com/author/dependency
-go mod tidy
+### Managing multiple bosks
+
+Each provider configuration targets one maintenance endpoint. Use provider
+aliases to manage more than one bosk in the same configuration:
+
+```hcl
+provider "bosk" {
+  endpoint = "https://prod.example.com/bosk/state"
+  token    = var.prod_token
+}
+
+provider "bosk" {
+  alias    = "staging"
+  endpoint = "https://staging.example.com/bosk/state"
+  token    = var.staging_token
+}
+
+resource "bosk_node" "prod_world" {
+  path  = "/targets/world"
+  value = jsonencode({ id = "world", name = "World" })
+}
+
+resource "bosk_node" "staging_world" {
+  provider = bosk.staging
+  path     = "/targets/world"
+  value    = jsonencode({ id = "world", name = "World" })
+}
 ```
 
-Then commit the changes to `go.mod` and `go.sum`.
+Resources and data sources select a configuration with
+`provider = bosk.<alias>`. If you prefer one state per environment, use
+Terraform workspaces or separate root modules instead.
 
-## Using the Provider
+## `bosk_node`
 
-Fill this in for each provider
+`path` is the node's identity, relative to the maintenance endpoint. Use
+`jsonencode(...)` for `value`.
 
-## Developing the Provider
+- **Create** fails if the node already exists. Import it first to adopt an
+  existing node.
+- **Update** replaces the value. If bosk returns an ETag (a node with a
+  `revision` field), the provider sends it in `If-Match`, so a concurrent change
+  is rejected rather than silently overwritten.
+- **Delete** removes the node. bosk rejects deleting required fields.
+- **Read** sends `Cache-Control: no-cache`, which makes bosk flush before
+  reading.
+- Every write is followed by a fresh read. If the value does not match what
+  Terraform asked for, the provider reports a concurrency or write failure
+  instead of recording false success.
 
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
+For nodes that have a `revision` field, include it in `value`; the provider
+treats it as opaque and uses the ETag for conditional writes.
 
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+Nodes without a `revision` field have no ETag, so updates are last-writer-wins.
 
-To generate or update documentation, run `make generate`.
-
-In order to run the full suite of Acceptance tests, run `make testacc`.
-
-*Note:* Acceptance tests create real resources, and often cost money to run.
+## Import
 
 ```shell
+terraform import bosk_node.world /targets/world
+```
+
+Terraform 1.12 and later can also import by resource identity:
+
+```hcl
+import {
+  to = bosk_node.world
+  identity = {
+    path = "/targets/world"
+  }
+}
+```
+
+## Development
+
+```shell
+make build
+make test
 make testacc
+make generate
 ```
+
+Acceptance tests use an in-process fake maintenance server and do not require a
+running bosk application. The Terraform CLI is downloaded automatically by the
+testing framework if it is not already installed.
+
+## Previous implementation
+
+The pre-rewrite implementation is preserved at tag `v0.0.16`.
+
+## License
+
+MPL-2.0. See [LICENSE](LICENSE).
