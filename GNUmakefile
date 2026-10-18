@@ -18,7 +18,10 @@ fmt:
 test:
 	go test -v -cover -timeout=120s -parallel=10 ./...
 
+vulncheck:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
 testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
-.PHONY: fmt lint test testacc build install generate
+.PHONY: fmt lint test vulncheck testacc build install generate
