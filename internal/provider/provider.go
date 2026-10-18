@@ -208,6 +208,21 @@ func (p *BoskProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		insecureSkipVerify = parsed
 	}
 
+	if insecureSkipVerify && caCert != "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("insecure_skip_verify"),
+			"Conflicting TLS settings",
+			"ca_cert has no effect when insecure_skip_verify is true; remove one of them.",
+		)
+		return
+	}
+	if insecureSkipVerify {
+		resp.Diagnostics.AddWarning(
+			"TLS certificate verification disabled",
+			"insecure_skip_verify is enabled, so the provider will accept any server certificate. Use this only for local development.",
+		)
+	}
+
 	if endpoint.Scheme == "http" && (token != "" || username != "") {
 		resp.Diagnostics.AddWarning(
 			"Credentials sent over HTTP",

@@ -83,6 +83,9 @@ func (c Config) Validate() error {
 	if c.Token != "" && c.Username != "" {
 		return fmt.Errorf("token and username/password are mutually exclusive")
 	}
+	if c.InsecureSkipVerify && c.CACert != "" {
+		return fmt.Errorf("ca_cert has no effect when insecure_skip_verify is true")
+	}
 	if c.RequestTimeout < 0 {
 		return fmt.Errorf("request timeout must not be negative")
 	}

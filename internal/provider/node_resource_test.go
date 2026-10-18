@@ -81,6 +81,75 @@ resource "bosk_node" "test" {
 	})
 }
 
+func TestAccNode_customHeaders(t *testing.T) {
+	fake := testserver.NewFake(t)
+	fake.RequireHeader("X-Bosk-Test", "present")
+
+	config := fmt.Sprintf(`
+provider "bosk" {
+  endpoint        = %q
+  request_timeout = "5s"
+  headers = {
+    "X-Bosk-Test" = "present"
+  }
+}
+
+resource "bosk_node" "test" {
+  path  = "/targets/header"
+  value = jsonencode({ id = "header" })
+}
+`, fake.Endpoint())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("bosk_node.test", "path", "/targets/header"),
+					func(state *terraform.State) error {
+						if _, ok := fake.GetNode("/targets/header"); !ok {
+							return fmt.Errorf("provider did not send the required custom header")
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccNode_reservedHeaderRejected(t *testing.T) {
+	fake := testserver.NewFake(t)
+
+	config := fmt.Sprintf(`
+provider "bosk" {
+  endpoint        = %q
+  request_timeout = "5s"
+  headers = {
+    "Authorization" = "custom"
+  }
+}
+
+resource "bosk_node" "test" {
+  path  = "/targets/reserved"
+  value = jsonencode({ id = "reserved" })
+}
+`, fake.Endpoint())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      config,
+				ExpectError: regexp.MustCompile(`managed by the provider`),
+			},
+		},
+	})
+}
+
 func TestAccNode_basic(t *testing.T) {
 	fake := testserver.NewFake(t)
 	fake.RequireFreshReads()

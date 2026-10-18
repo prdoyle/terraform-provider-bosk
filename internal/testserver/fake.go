@@ -46,18 +46,19 @@ type Fake struct {
 
 	basePath string
 
-	mu           sync.Mutex
-	committed    map[string]*Node
-	pending      []func()
-	buffered     bool
-	auth         AuthMode
-	token        string
-	username     string
-	password     string
-	failures     []failure
-	requireFresh bool
-	dropWrites   map[string]bool
-	requests     int
+	mu              sync.Mutex
+	committed       map[string]*Node
+	pending         []func()
+	buffered        bool
+	auth            AuthMode
+	token           string
+	username        string
+	password        string
+	failures        []failure
+	requireFresh    bool
+	dropWrites      map[string]bool
+	requiredHeaders map[string]string
+	requests        int
 }
 
 var _ Server = (*Fake)(nil)
@@ -77,11 +78,12 @@ func NewFake(t *testing.T) *Fake {
 	t.Helper()
 
 	f := &Fake{
-		basePath:   "/bosk/state",
-		committed:  map[string]*Node{},
-		buffered:   true,
-		auth:       AuthNone,
-		dropWrites: map[string]bool{},
+		basePath:        "/bosk/state",
+		committed:       map[string]*Node{},
+		buffered:        true,
+		auth:            AuthNone,
+		dropWrites:      map[string]bool{},
+		requiredHeaders: map[string]string{},
 	}
 	f.setNode("/targets/world", []byte(`{"id":"world","name":"World"}`))
 	f.setNode("/targets/a%2Fb", []byte(`{"id":"a/b","name":"Slashy"}`))
@@ -134,6 +136,13 @@ func (f *Fake) RequireFreshReads() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.requireFresh = true
+}
+
+// RequireHeader makes every request fail unless the named header has value.
+func (f *Fake) RequireHeader(name, value string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.requiredHeaders[name] = value
 }
 
 // DropWrites makes PUT requests to path return 202 without applying them.
@@ -226,6 +235,10 @@ func (f *Fake) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if !f.authorized(r) {
 		w.Header().Set("WWW-Authenticate", "Bearer")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if !f.hasRequiredHeaders(r) {
+		http.Error(w, "missing required header", http.StatusUnauthorized)
 		return
 	}
 
@@ -391,6 +404,17 @@ func (f *Fake) authorized(r *http.Request) bool {
 	default:
 		return false
 	}
+}
+
+func (f *Fake) hasRequiredHeaders(r *http.Request) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for name, value := range f.requiredHeaders {
+		if r.Header.Get(name) != value {
+			return false
+		}
+	}
+	return true
 }
 
 func (f *Fake) takeFailure(method, path string) (failure, bool) {
