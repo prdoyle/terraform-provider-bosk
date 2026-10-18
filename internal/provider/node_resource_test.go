@@ -43,6 +43,44 @@ resource "bosk_node" "test" {
 `, path, valueExpression)
 }
 
+func TestAccProvider_alias(t *testing.T) {
+	fake := testserver.NewFake(t)
+	fake.RequireFreshReads()
+
+	config := fmt.Sprintf(`
+provider "bosk" {
+  alias           = "alternate"
+  endpoint        = %q
+  request_timeout = "5s"
+}
+
+resource "bosk_node" "test" {
+  provider = bosk.alternate
+  path     = "/targets/alias"
+  value    = jsonencode({ id = "alias" })
+}
+`, fake.Endpoint())
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("bosk_node.test", "path", "/targets/alias"),
+					func(state *terraform.State) error {
+						if _, ok := fake.GetNode("/targets/alias"); !ok {
+							return fmt.Errorf("aliased provider did not write its node")
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestAccNode_basic(t *testing.T) {
 	fake := testserver.NewFake(t)
 	fake.RequireFreshReads()

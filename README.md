@@ -56,6 +56,39 @@ resource "bosk_node" "world" {
 
 Set either `token` or `username`/`password`, not both.
 
+### Managing multiple bosks
+
+Each provider configuration targets one maintenance endpoint. Use provider
+aliases to manage more than one bosk in the same configuration:
+
+```hcl
+provider "bosk" {
+  endpoint = "https://prod.example.com/bosk/state"
+  token    = var.prod_token
+}
+
+provider "bosk" {
+  alias    = "staging"
+  endpoint = "https://staging.example.com/bosk/state"
+  token    = var.staging_token
+}
+
+resource "bosk_node" "prod_world" {
+  path  = "/targets/world"
+  value = jsonencode({ id = "world", name = "World" })
+}
+
+resource "bosk_node" "staging_world" {
+  provider = bosk.staging
+  path     = "/targets/world"
+  value    = jsonencode({ id = "world", name = "World" })
+}
+```
+
+Resources and data sources select a configuration with
+`provider = bosk.<alias>`. If you prefer one state per environment, use
+Terraform workspaces or separate root modules instead.
+
 ## `bosk_node`
 
 `path` is the node's identity, relative to the maintenance endpoint. Use
