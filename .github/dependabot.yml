@@ -2,29 +2,37 @@
 # https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/configuration-options-for-dependency-updates
 version: 2
 updates:
-  # Maintain dependencies for Go modules
+  # Maintain dependencies for Go modules.
+  # Dependabot cannot combine different ecosystems or directories into one PR,
+  # so this produces one grouped PR for the root module.
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      # Check for updates to Go modules every weekday
       interval: "daily"
     groups:
-      # Group all terraform-plugin-(go|sdk|framework|testing) dependencies together
-      "terraform-plugin":
+      "go-dependencies":
         patterns:
-          - "github.com/hashicorp/terraform-plugin-*"
+          - "*"
+
+  # The tools module is separate, so it gets its own grouped PR.
   - package-ecosystem: "gomod"
     directory: "/tools"
     schedule:
       interval: "daily"
+    groups:
+      "go-tools":
+        patterns:
+          - "*"
+
+  # GitHub Actions are a different ecosystem, so they get their own grouped PR.
   - package-ecosystem: "github-actions"
     directory: "/"
-    groups:
-      "github-actions":
-        patterns:
-          - "*" # Group all GitHub Actions dependencies together
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
       timezone: "Etc/UTC"
+    groups:
+      "github-actions":
+        patterns:
+          - "*"
